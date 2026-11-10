@@ -1,0 +1,10 @@
+spring:
+  jpa:
+    show-sql: false
+    open-in-view: false
+
+logging:
+  level:
+    root: INFO
+    com.sneakerstore: INFO
+
