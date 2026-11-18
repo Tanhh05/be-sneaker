@@ -18,6 +18,9 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     boolean existsByOrderCodeIgnoreCase(String orderCode);
 
     @EntityGraph(attributePaths = {"customer", "employee"})
+    Optional<SalesOrder> findByOrderCodeIgnoreCase(String orderCode);
+
+    @EntityGraph(attributePaths = {"customer", "employee"})
     Optional<SalesOrder> findWithHeaderById(Long id);
 
     @EntityGraph(attributePaths = {"customer", "employee"})

@@ -15,6 +15,8 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     boolean existsByPhone(String phone);
 
+    java.util.Optional<Customer> findByPhone(String phone);
+
     @Query("SELECT c FROM Customer c WHERE " +
            "(:keyword IS NULL OR :keyword = '' OR LOWER(c.customerCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
