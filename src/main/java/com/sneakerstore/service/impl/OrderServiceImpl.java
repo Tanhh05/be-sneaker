@@ -54,13 +54,32 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public PageResponse<SalesOrderDto> searchOrders(
             String keyword, String status, LocalDate fromDate, LocalDate toDate, Pageable pageable) {
-        // Bước 1: Chuẩn hóa khoảng thời gian lọc
+        // Bước 1: Chuẩn hóa khoảng thời gian lọc & từ khóa
         LocalDateTime start = fromDate != null ? fromDate.atStartOfDay() : null;
         LocalDateTime end = toDate != null ? toDate.atTime(LocalTime.MAX) : null;
 
+        String trimmedKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+        String altKeyword = null;
+        if (trimmedKeyword != null) {
+            // Hỗ trợ tìm kiếm thông minh: nếu nhập hd019, hd19, 19, HD19 -> chuẩn hóa sang mã chuẩn HD0019
+            if (trimmedKeyword.matches("(?i)^HD0*(\\d+)$")) {
+                try {
+                    long num = Long.parseLong(trimmedKeyword.replaceAll("(?i)^HD0*", ""));
+                    altKeyword = String.format("HD%04d", num);
+                } catch (Exception ignored) {
+                }
+            } else if (trimmedKeyword.matches("^\\d+$")) {
+                try {
+                    long num = Long.parseLong(trimmedKeyword);
+                    altKeyword = String.format("HD%04d", num);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
         // Bước 2-3: Truy vấn phân trang trong Transaction ReadOnly
         Page<SalesOrderDto> page = salesOrderRepository
-                .searchOrders(keyword, status, start, end, pageable)
+                .searchOrders(trimmedKeyword, altKeyword, status, start, end, pageable)
                 // Bước 5: Output Mapping qua OrderMapper
                 .map(orderMapper::toSummaryDto);
         return PageResponse.of(page);
@@ -125,7 +144,7 @@ public class OrderServiceImpl implements OrderService {
         String initialStatus = request.getStatus() != null && !request.getStatus().isBlank()
                 ? request.getStatus().toUpperCase()
                 : AppConstants.ORDER_COMPLETED;
-        if (!List.of(AppConstants.ORDER_DRAFT, AppConstants.ORDER_CONFIRMED, AppConstants.ORDER_COMPLETED).contains(initialStatus)) {
+        if (!List.of(AppConstants.ORDER_DRAFT, AppConstants.ORDER_PENDING, AppConstants.ORDER_CONFIRMED, AppConstants.ORDER_SHIPPING, AppConstants.ORDER_COMPLETED).contains(initialStatus)) {
             throw new BusinessException("Trạng thái khởi tạo đơn hàng không hợp lệ: " + initialStatus);
         }
 
@@ -296,15 +315,21 @@ public class OrderServiceImpl implements OrderService {
         if (AppConstants.ORDER_CANCELLED.equals(currentStatus)) {
             throw new BusinessException("Đơn hàng đã bị hủy (CANCELLED), không thể khôi phục hoặc chuyển trạng thái");
         }
-        if (AppConstants.ORDER_DRAFT.equals(currentStatus)) {
-            if (!List.of(AppConstants.ORDER_CONFIRMED, AppConstants.ORDER_COMPLETED, AppConstants.ORDER_CANCELLED).contains(nextStatus)) {
-                throw new BusinessException("Luồng trạng thái không hợp lệ: Không thể chuyển từ DRAFT sang " + nextStatus);
+        if (AppConstants.ORDER_DRAFT.equals(currentStatus) || AppConstants.ORDER_PENDING.equals(currentStatus)) {
+            if (!List.of(AppConstants.ORDER_CONFIRMED, AppConstants.ORDER_SHIPPING, AppConstants.ORDER_COMPLETED, AppConstants.ORDER_CANCELLED).contains(nextStatus)) {
+                throw new BusinessException("Luồng trạng thái không hợp lệ: Không thể chuyển từ " + currentStatus + " sang " + nextStatus);
             }
             return;
         }
         if (AppConstants.ORDER_CONFIRMED.equals(currentStatus)) {
+            if (!List.of(AppConstants.ORDER_SHIPPING, AppConstants.ORDER_COMPLETED, AppConstants.ORDER_CANCELLED).contains(nextStatus)) {
+                throw new BusinessException("Luồng trạng thái không hợp lệ: Từ CONFIRMED chỉ có thể chuyển sang SHIPPING, COMPLETED hoặc CANCELLED");
+            }
+            return;
+        }
+        if (AppConstants.ORDER_SHIPPING.equals(currentStatus)) {
             if (!List.of(AppConstants.ORDER_COMPLETED, AppConstants.ORDER_CANCELLED).contains(nextStatus)) {
-                throw new BusinessException("Luồng trạng thái không hợp lệ: Từ CONFIRMED chỉ có thể chuyển sang COMPLETED hoặc CANCELLED");
+                throw new BusinessException("Luồng trạng thái không hợp lệ: Từ SHIPPING chỉ có thể chuyển sang COMPLETED hoặc CANCELLED");
             }
             return;
         }

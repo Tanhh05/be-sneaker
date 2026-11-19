@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: sneaker-store-backend
+  config:
+    import: "optional:classpath:application-local.yml"
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
   datasource:
     url: ${DB_URL:jdbc:oracle:thin:@//localhost:1521/FREEPDB1}
     username: ${DB_USERNAME:SNEAKER_STORE}
@@ -27,6 +33,16 @@ app:
   jwt:
     secret: ${JWT_SECRET:SneakerStoreManagementSystemSecretKey2026ForHS256AuthenticationToken99887766}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:your-google-client-id.apps.googleusercontent.com}
+    client-secret: ${GOOGLE_CLIENT_SECRET:your-google-client-secret}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: ${MINIO_BUCKET_NAME:sneaker-products}
+  public-url: ${MINIO_PUBLIC_URL:http://localhost:9000/sneaker-products}
 
 springdoc:
   api-docs:

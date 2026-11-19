@@ -49,14 +49,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Object>> handleBadCredentials(BadCredentialsException ex) {
+        String msg = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage() : "Tên đăng nhập hoặc mật khẩu không chính xác";
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.error(HttpStatus.UNAUTHORIZED.value(), "Tên đăng nhập hoặc mật khẩu không chính xác"));
+                .body(ApiResponse.error(HttpStatus.UNAUTHORIZED.value(), msg));
     }
 
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ApiResponse<Object>> handleLocked(LockedException ex) {
+        String msg = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage() : "Tài khoản đã bị khóa hoặc ngừng hoạt động";
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error(HttpStatus.FORBIDDEN.value(), "Tài khoản đã bị khóa hoặc ngừng hoạt động"));
+                .body(ApiResponse.error(HttpStatus.FORBIDDEN.value(), msg));
     }
 
     @ExceptionHandler({AccessDeniedException.class, PermissionDeniedException.class})

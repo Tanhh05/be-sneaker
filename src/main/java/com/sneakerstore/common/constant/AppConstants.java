@@ -12,7 +12,9 @@ public final class AppConstants {
     public static final String ROLE_STAFF = "STAFF";
 
     public static final String ORDER_DRAFT = "DRAFT";
+    public static final String ORDER_PENDING = "PENDING";
     public static final String ORDER_CONFIRMED = "CONFIRMED";
+    public static final String ORDER_SHIPPING = "SHIPPING";
     public static final String ORDER_COMPLETED = "COMPLETED";
     public static final String ORDER_CANCELLED = "CANCELLED";
 

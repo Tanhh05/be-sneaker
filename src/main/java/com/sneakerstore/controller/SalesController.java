@@ -54,6 +54,14 @@ public class SalesController {
                 orderService.updateStatus(id, AppConstants.ORDER_CONFIRMED, note));
     }
 
+    @PostMapping("/{id}/ship")
+    public ApiResponse<SalesOrderDto> shipSale(
+            @PathVariable Long id, @RequestBody(required = false) Map<String, String> payload) {
+        String note = payload != null ? payload.get("note") : null;
+        return ApiResponse.ok("Chuyển trạng thái đang giao hàng thành công",
+                orderService.updateStatus(id, AppConstants.ORDER_SHIPPING, note));
+    }
+
     @PostMapping("/{id}/complete")
     public ApiResponse<SalesOrderDto> completeSale(
             @PathVariable Long id, @RequestBody(required = false) Map<String, String> payload) {

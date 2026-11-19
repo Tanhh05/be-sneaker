@@ -88,6 +88,10 @@ public class ProductServiceImpl implements ProductService {
 
         // Bước 2 & 3: Quản lý Transaction & Thực thi logic lõi (Khởi tạo sản phẩm và lưu danh sách ảnh)
         String actor = SecurityUtils.getCurrentUsername();
+        String primaryImage = (request.getThumbnailUrl() != null && !request.getThumbnailUrl().isBlank())
+                ? request.getThumbnailUrl().trim()
+                : (request.getImageUrls() != null && !request.getImageUrls().isEmpty() ? request.getImageUrls().get(0).trim() : null);
+
         Product product = Product.builder()
                 .productCode(code)
                 .productName(request.getProductName().trim())
@@ -95,7 +99,7 @@ public class ProductServiceImpl implements ProductService {
                 .category(category)
                 .material(request.getMaterial())
                 .description(request.getDescription())
-                .thumbnailUrl(request.getThumbnailUrl())
+                .thumbnailUrl(primaryImage)
                 .importPrice(request.getImportPrice())
                 .salePrice(request.getSalePrice())
                 .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
@@ -105,7 +109,7 @@ public class ProductServiceImpl implements ProductService {
                 .build();
 
         Product saved = productRepository.save(product);
-        saveImages(saved, request.getThumbnailUrl(), request.getImageUrls(), actor);
+        saveImages(saved, primaryImage, request.getImageUrls(), actor);
 
         // Bước 5: Output Mapping
         return getById(saved.getId());
@@ -129,13 +133,17 @@ public class ProductServiceImpl implements ProductService {
 
         // Bước 2 & 3: Quản lý Transaction & Thực thi logic lõi (Cập nhật thông tin SP và danh sách hình ảnh)
         String actor = SecurityUtils.getCurrentUsername();
+        String primaryImage = (request.getThumbnailUrl() != null && !request.getThumbnailUrl().isBlank())
+                ? request.getThumbnailUrl().trim()
+                : (request.getImageUrls() != null && !request.getImageUrls().isEmpty() ? request.getImageUrls().get(0).trim() : null);
+
         product.setProductCode(code);
         product.setProductName(request.getProductName().trim());
         product.setBrand(brand);
         product.setCategory(category);
         product.setMaterial(request.getMaterial());
         product.setDescription(request.getDescription());
-        product.setThumbnailUrl(request.getThumbnailUrl());
+        product.setThumbnailUrl(primaryImage);
         product.setImportPrice(request.getImportPrice());
         product.setSalePrice(request.getSalePrice());
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
@@ -146,9 +154,9 @@ public class ProductServiceImpl implements ProductService {
         product.setUpdatedBy(actor);
 
         Product saved = productRepository.save(product);
-        if (request.getImageUrls() != null) {
+        if (request.getImageUrls() != null || request.getThumbnailUrl() != null) {
             productImageRepository.deleteByProductId(saved.getId());
-            saveImages(saved, request.getThumbnailUrl(), request.getImageUrls(), actor);
+            saveImages(saved, primaryImage, request.getImageUrls(), actor);
         }
 
         // Bước 5: Output Mapping
@@ -171,32 +179,32 @@ public class ProductServiceImpl implements ProductService {
 
     private void saveImages(Product product, String thumbnailUrl, List<String> imageUrls, String actor) {
         List<ProductImage> toSave = new ArrayList<>();
+        List<String> allImages = new ArrayList<>();
+
         if (imageUrls != null && !imageUrls.isEmpty()) {
-            int order = 1;
-            for (String url : imageUrls) {
-                if (url != null && !url.isBlank()) {
-                    toSave.add(ProductImage.builder()
-                            .product(product)
-                            .imageUrl(url.trim())
-                            .isPrimary(order == 1 ? 1 : 0)
-                            .displayOrder(order++)
-                            .status("ACTIVE")
-                            .createdBy(actor)
-                            .updatedBy(actor)
-                            .build());
+            for (String u : imageUrls) {
+                if (u != null && !u.isBlank() && !allImages.contains(u.trim())) {
+                    allImages.add(u.trim());
                 }
             }
-        } else if (thumbnailUrl != null && !thumbnailUrl.isBlank()) {
+        }
+        if (thumbnailUrl != null && !thumbnailUrl.isBlank() && !allImages.contains(thumbnailUrl.trim())) {
+            allImages.add(0, thumbnailUrl.trim());
+        }
+
+        int order = 1;
+        for (String url : allImages) {
             toSave.add(ProductImage.builder()
                     .product(product)
-                    .imageUrl(thumbnailUrl.trim())
-                    .isPrimary(1)
-                    .displayOrder(1)
+                    .imageUrl(url)
+                    .isPrimary(order == 1 ? 1 : 0)
+                    .displayOrder(order++)
                     .status("ACTIVE")
                     .createdBy(actor)
                     .updatedBy(actor)
                     .build());
         }
+
         if (!toSave.isEmpty()) {
             productImageRepository.saveAll(toSave);
         }

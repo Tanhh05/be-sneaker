@@ -1,7 +1,9 @@
 package com.sneakerstore.controller;
 
 import com.sneakerstore.dto.request.ChangePasswordRequest;
+import com.sneakerstore.dto.request.GoogleLoginRequest;
 import com.sneakerstore.dto.request.LoginRequest;
+import com.sneakerstore.dto.request.RegisterRequest;
 import com.sneakerstore.dto.response.LoginResponse;
 import com.sneakerstore.service.AuthService;
 import com.sneakerstore.common.response.ApiResponse;
@@ -20,6 +22,16 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok("Đăng nhập thành công", authService.login(request));
+    }
+
+    @PostMapping("/register")
+    public ApiResponse<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ApiResponse.ok("Đăng ký tài khoản thành công", authService.register(request));
+    }
+
+    @PostMapping("/google")
+    public ApiResponse<LoginResponse> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        return ApiResponse.ok("Đăng nhập Google thành công", authService.loginWithGoogle(request));
     }
 
     @PostMapping("/logout")

@@ -88,6 +88,13 @@
             <version>${poi.version}</version>
         </dependency>
 
+        <!-- MinIO Object Storage SDK -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.5.7</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

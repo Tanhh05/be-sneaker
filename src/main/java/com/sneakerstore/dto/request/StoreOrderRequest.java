@@ -29,6 +29,11 @@ public class StoreOrderRequest {
     @NotBlank(message = "Địa chỉ nhận hàng không được để trống")
     private String shippingAddress;
 
+    private String provinceName;
+    private String districtName;
+    private String wardName;
+    private String streetAddress;
+
     private String paymentMethod; // CASH (COD) hoặc BANK_TRANSFER
     private String note;
 

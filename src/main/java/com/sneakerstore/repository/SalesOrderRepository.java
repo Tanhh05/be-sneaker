@@ -27,14 +27,35 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     List<SalesOrder> findByCustomerIdOrderByOrderDateDesc(Long customerId);
 
     @EntityGraph(attributePaths = {"customer", "employee"})
-    @Query("SELECT so FROM SalesOrder so WHERE " +
-           "(:keyword IS NULL OR :keyword = '' OR LOWER(so.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "OR (so.customer IS NOT NULL AND LOWER(so.customer.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "OR (so.customer IS NOT NULL AND LOWER(so.customer.phone) LIKE LOWER(CONCAT('%', :keyword, '%')))) " +
+    @Query("SELECT DISTINCT so FROM SalesOrder so " +
+           "LEFT JOIN so.customer c " +
+           "WHERE (:phone IS NOT NULL AND :phone <> '' AND TRIM(c.phone) = TRIM(:phone)) " +
+           "   OR (:email IS NOT NULL AND :email <> '' AND LOWER(TRIM(c.email)) = LOWER(TRIM(:email))) " +
+           "ORDER BY so.orderDate DESC")
+    List<SalesOrder> findOrdersByPhoneOrEmail(@Param("phone") String phone, @Param("email") String email);
+
+    @EntityGraph(attributePaths = {"customer", "employee"})
+    @Query(value = "SELECT so FROM SalesOrder so " +
+           "LEFT JOIN so.customer c " +
+           "LEFT JOIN so.employee e " +
+           "WHERE (:keyword IS NULL OR :keyword = '' " +
+           "OR LOWER(so.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "OR (:altKeyword IS NOT NULL AND LOWER(so.orderCode) = LOWER(:altKeyword)) " +
+           "OR (c IS NOT NULL AND (LOWER(c.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))))) " +
+           "AND (:status IS NULL OR :status = '' OR so.status = :status) " +
+           "AND (:fromDate IS NULL OR so.orderDate >= :fromDate) " +
+           "AND (:toDate IS NULL OR so.orderDate <= :toDate)",
+           countQuery = "SELECT COUNT(so) FROM SalesOrder so " +
+           "LEFT JOIN so.customer c " +
+           "WHERE (:keyword IS NULL OR :keyword = '' " +
+           "OR LOWER(so.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "OR (:altKeyword IS NOT NULL AND LOWER(so.orderCode) = LOWER(:altKeyword)) " +
+           "OR (c IS NOT NULL AND (LOWER(c.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))))) " +
            "AND (:status IS NULL OR :status = '' OR so.status = :status) " +
            "AND (:fromDate IS NULL OR so.orderDate >= :fromDate) " +
            "AND (:toDate IS NULL OR so.orderDate <= :toDate)")
     Page<SalesOrder> searchOrders(@Param("keyword") String keyword,
+                                  @Param("altKeyword") String altKeyword,
                                   @Param("status") String status,
                                   @Param("fromDate") LocalDateTime fromDate,
                                   @Param("toDate") LocalDateTime toDate,

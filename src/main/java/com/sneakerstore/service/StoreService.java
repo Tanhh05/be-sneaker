@@ -18,4 +18,7 @@ public interface StoreService {
     ProductDto getProductDetail(Long id);
     StoreOrderResponse checkout(StoreOrderRequest request);
     SalesOrderDto trackOrder(String code, String phone);
+    List<SalesOrderDto> getMyOrders(String phone, String email);
+    SalesOrderDto getMyOrderDetail(String orderCode, String phone);
+    SalesOrderDto cancelMyOrder(String orderCode, String reason, String phone);
 }

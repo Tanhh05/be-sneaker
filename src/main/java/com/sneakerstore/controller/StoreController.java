@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/store")
@@ -58,5 +59,28 @@ public class StoreController {
             @RequestParam String code,
             @RequestParam(required = false) String phone) {
         return ApiResponse.ok(storeService.trackOrder(code, phone));
+    }
+
+    @GetMapping("/my-orders")
+    public ApiResponse<List<SalesOrderDto>> getMyOrders(
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String email) {
+        return ApiResponse.ok(storeService.getMyOrders(phone, email));
+    }
+
+    @GetMapping("/my-orders/{orderCode}")
+    public ApiResponse<SalesOrderDto> getMyOrderDetail(
+            @PathVariable String orderCode,
+            @RequestParam(required = false) String phone) {
+        return ApiResponse.ok(storeService.getMyOrderDetail(orderCode, phone));
+    }
+
+    @PostMapping("/my-orders/{orderCode}/cancel")
+    public ApiResponse<SalesOrderDto> cancelMyOrder(
+            @PathVariable String orderCode,
+            @RequestBody(required = false) Map<String, String> payload) {
+        String reason = payload != null ? payload.get("reason") : null;
+        String phone = payload != null ? payload.get("phone") : null;
+        return ApiResponse.ok("Hủy đơn hàng thành công", storeService.cancelMyOrder(orderCode, reason, phone));
     }
 }

@@ -21,6 +21,8 @@ public class SalesOrderDto {
     private String customerCode;
     private String customerName;
     private String customerPhone;
+    private String customerEmail;
+    private String customerAddress;
     private Long employeeId;
     private String employeeName;
     private LocalDateTime orderDate;
@@ -29,6 +31,8 @@ public class SalesOrderDto {
     private String paymentMethod;
     private String status;
     private String note;
+    private String qrPaymentUrl;
+    private String bankInfo;
     private List<SalesOrderDetailDto> details;
     private List<PaymentDto> payments;
     private List<OrderStatusHistoryDto> histories;

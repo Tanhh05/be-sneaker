@@ -19,6 +19,7 @@ public class SalesOrderDetailDto {
     private String sku;
     private String sizeValue;
     private String colorName;
+    private String thumbnailUrl;
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal subtotal;
