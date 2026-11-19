@@ -46,6 +46,7 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/google",
                                 "/api/store/**",
+                                "/api/webhooks/**",
                                 "/api/files/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",

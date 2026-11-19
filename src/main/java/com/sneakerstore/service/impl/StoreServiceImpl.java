@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +45,15 @@ public class StoreServiceImpl implements StoreService {
     private final PaymentRepository paymentRepository;
     private final OrderMapper orderMapper;
     private final UserRepository userRepository;
+
+    @Value("${sepay.bank-account:0901000001}")
+    private String configuredBankAccount;
+
+    @Value("${sepay.account-name:SNEAKERHUB PRO}")
+    private String configuredAccountName;
+
+    @Value("${sepay.bank-name:MB}")
+    private String configuredBankName;
 
     @Override
     @Transactional(readOnly = true)
@@ -216,14 +226,14 @@ public class StoreServiceImpl implements StoreService {
         String qrUrl = null;
         String bankInfo = null;
         if (AppConstants.PAYMENT_BANK_TRANSFER.equals(paymentMethod)) {
-            String accountNo = "0901000001";
-            String bankId = "MB";
-            String accountName = "SNEAKERHUB PRO";
+            String accountNo = configuredBankAccount != null ? configuredBankAccount : "0901000001";
+            String bankId = configuredBankName != null ? configuredBankName : "MB";
+            String accountName = configuredAccountName != null ? configuredAccountName : "SNEAKERHUB PRO";
             long amount = totalAmount.longValue();
             String memo = URLEncoder.encode(orderCode, StandardCharsets.UTF_8);
             qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s",
                     bankId, accountNo, amount, memo, URLEncoder.encode(accountName, StandardCharsets.UTF_8));
-            bankInfo = String.format("Ngân hàng: MBBank | STK: %s | Chủ TK: %s | Nội dung: %s", accountNo, accountName, orderCode);
+            bankInfo = String.format("Ngân hàng: %s | STK: %s | Chủ TK: %s | Nội dung: %s", bankId, accountNo, accountName, orderCode);
         }
 
         List<SalesOrderDetailDto> itemDtos = details.stream()
@@ -447,15 +457,15 @@ public class StoreServiceImpl implements StoreService {
         if (dto == null) return;
         if (AppConstants.PAYMENT_BANK_TRANSFER.equalsIgnoreCase(dto.getPaymentMethod())
                 && (AppConstants.ORDER_PENDING.equalsIgnoreCase(dto.getStatus()) || AppConstants.ORDER_CONFIRMED.equalsIgnoreCase(dto.getStatus()))) {
-            String accountNo = "0901000001";
-            String bankId = "MB";
-            String accountName = "SNEAKERHUB PRO";
+            String accountNo = configuredBankAccount != null ? configuredBankAccount : "0901000001";
+            String bankId = configuredBankName != null ? configuredBankName : "MB";
+            String accountName = configuredAccountName != null ? configuredAccountName : "SNEAKERHUB PRO";
             long amount = dto.getFinalAmount() != null ? dto.getFinalAmount().longValue() : 0L;
             String memo = URLEncoder.encode(dto.getOrderCode(), StandardCharsets.UTF_8);
             String qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s",
                     bankId, accountNo, amount, memo, URLEncoder.encode(accountName, StandardCharsets.UTF_8));
             dto.setQrPaymentUrl(qrUrl);
-            dto.setBankInfo(String.format("Ngân hàng: MBBank | STK: %s | Chủ TK: %s | Nội dung: %s", accountNo, accountName, dto.getOrderCode()));
+            dto.setBankInfo(String.format("Ngân hàng: %s | STK: %s | Chủ TK: %s | Nội dung: %s", bankId, accountNo, accountName, dto.getOrderCode()));
         }
     }
 
