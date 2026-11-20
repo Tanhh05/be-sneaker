@@ -1,0 +1,9 @@
+target/classes
+target/generated-sources
+target/maven-status
+target/maven-archiver
+.git
+.idea
+.DS_Store
+*.iml
+*.log
