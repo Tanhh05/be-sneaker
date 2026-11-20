@@ -5,6 +5,7 @@ import com.sneakerstore.common.exception.BusinessException;
 import com.sneakerstore.common.exception.ResourceNotFoundException;
 import com.sneakerstore.common.response.PageResponse;
 import com.sneakerstore.common.util.SecurityUtils;
+import com.sneakerstore.dto.request.CreateReviewRequest;
 import com.sneakerstore.dto.request.StoreOrderRequest;
 import com.sneakerstore.dto.response.*;
 import com.sneakerstore.entity.*;
@@ -43,16 +44,19 @@ public class StoreServiceImpl implements StoreService {
     private final SalesOrderDetailRepository detailRepository;
     private final OrderStatusHistoryRepository historyRepository;
     private final PaymentRepository paymentRepository;
+    private final ProductReviewRepository reviewRepository;
+    private final ProductRepository productRepository;
+    private final ReportQueryRepository reportQueryRepository;
     private final OrderMapper orderMapper;
     private final UserRepository userRepository;
 
-    @Value("${sepay.bank-account:0901000001}")
+    @Value("${sepay.bank-account:0346771322}")
     private String configuredBankAccount;
 
     @Value("${sepay.account-name:SNEAKERHUB PRO}")
     private String configuredAccountName;
 
-    @Value("${sepay.bank-name:MB}")
+    @Value("${sepay.bank-name:MBBank}")
     private String configuredBankName;
 
     @Override
@@ -94,6 +98,33 @@ public class StoreServiceImpl implements StoreService {
                 PageRequest.of(0, 8, Sort.by(Sort.Direction.DESC, "id"))
         );
         return result.getContent();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductDto getBestSellerProduct() {
+        try {
+            List<DashboardResponse.ProductSalesStatDto> stats = reportQueryRepository.queryProductSalesStats(
+                    null, null, null, null, true, 1);
+            if (stats != null && !stats.isEmpty()) {
+                Long topProdId = stats.get(0).getProductId();
+                if (topProdId != null) {
+                    ProductDto dto = productService.getById(topProdId);
+                    if (dto != null) {
+                        return dto;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Lỗi khi truy vấn sản phẩm bán chạy nhất cho Store: {}", e.getMessage());
+        }
+
+        // Fallback sang sản phẩm nổi bật đầu tiên nếu chưa có số liệu bán hàng
+        List<ProductDto> featured = getFeaturedProducts();
+        if (featured != null && !featured.isEmpty()) {
+            return productService.getById(featured.get(0).getId());
+        }
+        return null;
     }
 
     @Override
@@ -225,14 +256,14 @@ public class StoreServiceImpl implements StoreService {
         // Xử lý thông tin thanh toán chuyển khoản nếu khách chọn BANK_TRANSFER
         String qrUrl = null;
         String bankInfo = null;
+        String accountNo = configuredBankAccount != null ? configuredBankAccount : "0346771322";
+        String bankId = configuredBankName != null ? configuredBankName : "MBBank";
+        String accountName = configuredAccountName != null ? configuredAccountName : "SNEAKERHUB PRO";
         if (AppConstants.PAYMENT_BANK_TRANSFER.equals(paymentMethod)) {
-            String accountNo = configuredBankAccount != null ? configuredBankAccount : "0901000001";
-            String bankId = configuredBankName != null ? configuredBankName : "MB";
-            String accountName = configuredAccountName != null ? configuredAccountName : "SNEAKERHUB PRO";
             long amount = totalAmount.longValue();
             String memo = URLEncoder.encode(orderCode, StandardCharsets.UTF_8);
-            qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s",
-                    bankId, accountNo, amount, memo, URLEncoder.encode(accountName, StandardCharsets.UTF_8));
+            qrUrl = String.format("https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
+                    accountNo, bankId, amount, memo);
             bankInfo = String.format("Ngân hàng: %s | STK: %s | Chủ TK: %s | Nội dung: %s", bankId, accountNo, accountName, orderCode);
         }
 
@@ -252,6 +283,9 @@ public class StoreServiceImpl implements StoreService {
                 .status(savedOrder.getStatus())
                 .qrPaymentUrl(qrUrl)
                 .bankInfo(bankInfo)
+                .bankAccount(accountNo)
+                .bankName(bankId)
+                .accountName(accountName)
                 .note(savedOrder.getNote())
                 .items(itemDtos)
                 .build();
@@ -455,37 +489,162 @@ public class StoreServiceImpl implements StoreService {
 
     private void attachPaymentQrIfApplicable(SalesOrderDto dto) {
         if (dto == null) return;
+        String accountNo = configuredBankAccount != null ? configuredBankAccount : "0346771322";
+        String bankId = configuredBankName != null ? configuredBankName : "MBBank";
+        String accountName = configuredAccountName != null ? configuredAccountName : "SNEAKERHUB PRO";
+        dto.setBankAccount(accountNo);
+        dto.setBankName(bankId);
+        dto.setAccountName(accountName);
         if (AppConstants.PAYMENT_BANK_TRANSFER.equalsIgnoreCase(dto.getPaymentMethod())
                 && (AppConstants.ORDER_PENDING.equalsIgnoreCase(dto.getStatus()) || AppConstants.ORDER_CONFIRMED.equalsIgnoreCase(dto.getStatus()))) {
-            String accountNo = configuredBankAccount != null ? configuredBankAccount : "0901000001";
-            String bankId = configuredBankName != null ? configuredBankName : "MB";
-            String accountName = configuredAccountName != null ? configuredAccountName : "SNEAKERHUB PRO";
             long amount = dto.getFinalAmount() != null ? dto.getFinalAmount().longValue() : 0L;
             String memo = URLEncoder.encode(dto.getOrderCode(), StandardCharsets.UTF_8);
-            String qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s",
-                    bankId, accountNo, amount, memo, URLEncoder.encode(accountName, StandardCharsets.UTF_8));
+            String qrUrl = String.format("https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
+                    accountNo, bankId, amount, memo);
             dto.setQrPaymentUrl(qrUrl);
             dto.setBankInfo(String.format("Ngân hàng: %s | STK: %s | Chủ TK: %s | Nội dung: %s", bankId, accountNo, accountName, dto.getOrderCode()));
         }
     }
 
     private String generateOrderCode() {
-        long count = salesOrderRepository.count() + 1;
-        String code = String.format("HD%04d", count);
-        while (salesOrderRepository.existsByOrderCodeIgnoreCase(code)) {
-            count++;
-            code = String.format("HD%04d", count);
-        }
+        String code;
+        do {
+            int rand = java.util.concurrent.ThreadLocalRandom.current().nextInt(100000, 1000000);
+            code = "HD" + rand;
+        } while (salesOrderRepository.existsByOrderCodeIgnoreCase(code));
         return code;
     }
 
     private String generateCustomerCode() {
-        long count = customerRepository.count() + 1;
-        String code = String.format("KH%04d", count);
-        while (customerRepository.existsByCustomerCodeIgnoreCase(code)) {
-            count++;
-            code = String.format("KH%04d", count);
-        }
+        String code;
+        do {
+            int rand = java.util.concurrent.ThreadLocalRandom.current().nextInt(100000, 1000000);
+            code = "KH" + rand;
+        } while (customerRepository.existsByCustomerCodeIgnoreCase(code));
         return code;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductReviewSummaryDto getProductReviews(Long productId) {
+        List<ProductReview> reviews = reviewRepository.findByProductIdAndStatusOrderByCreatedAtDesc(productId, "APPROVED");
+
+        double avg = reviews.isEmpty() ? 5.0 : reviews.stream().mapToInt(ProductReview::getRating).average().orElse(5.0);
+        avg = Math.round(avg * 10.0) / 10.0;
+
+        Map<Integer, Long> starCounts = new HashMap<>();
+        for (int i = 1; i <= 5; i++) starCounts.put(i, 0L);
+        reviews.forEach(r -> starCounts.put(r.getRating(), starCounts.getOrDefault(r.getRating(), 0L) + 1));
+
+        Map<String, Long> fitCounts = new HashMap<>();
+        reviews.stream()
+                .filter(r -> r.getFitFeedback() != null && !r.getFitFeedback().isBlank())
+                .forEach(r -> fitCounts.put(r.getFitFeedback(), fitCounts.getOrDefault(r.getFitFeedback(), 0L) + 1));
+
+        List<ProductReviewDto> dtos = reviews.stream().map(r -> {
+            List<String> photos = new ArrayList<>();
+            if (r.getPhotoUrls() != null && !r.getPhotoUrls().isBlank()) {
+                photos = Arrays.stream(r.getPhotoUrls().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toList());
+            }
+            return ProductReviewDto.builder()
+                    .id(r.getId())
+                    .productId(r.getProduct().getId())
+                    .productName(r.getProduct().getProductName())
+                    .customerName(r.getCustomerName())
+                    .rating(r.getRating())
+                    .fitFeedback(r.getFitFeedback())
+                    .comment(r.getCommentText())
+                    .photoUrls(photos)
+                    .isPurchased(r.getIsPurchased() != null && r.getIsPurchased() == 1)
+                    .createdAt(r.getCreatedAt())
+                    .build();
+        }).collect(Collectors.toList());
+
+        return ProductReviewSummaryDto.builder()
+                .averageRating(avg)
+                .totalReviews(reviews.size())
+                .starCounts(starCounts)
+                .fitCounts(fitCounts)
+                .reviews(dtos)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public ProductReviewDto submitProductReview(Long productId, CreateReviewRequest request) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm ID: " + productId));
+
+        SalesOrder order = salesOrderRepository.findByOrderCodeIgnoreCase(request.getOrderCode().trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với mã: " + request.getOrderCode()));
+
+        if (!AppConstants.ORDER_COMPLETED.equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException("Bạn chỉ có thể gửi đánh giá khi đơn hàng đã ở trạng thái HOÀN THÀNH (COMPLETED)!");
+        }
+
+        // Verify product in order
+        List<SalesOrderDetail> details = detailRepository.findBySalesOrderIdOrderByIdAsc(order.getId());
+        boolean hasProduct = details.stream().anyMatch(d ->
+                d.getProductVariant() != null &&
+                d.getProductVariant().getProduct() != null &&
+                d.getProductVariant().getProduct().getId().equals(productId));
+
+        if (!hasProduct) {
+            throw new BusinessException("Sản phẩm này không nằm trong đơn hàng #" + order.getOrderCode() + " của bạn!");
+        }
+
+        // Verify phone if customer exists
+        if (order.getCustomer() != null && request.getCustomerPhone() != null && !request.getCustomerPhone().isBlank()) {
+            if (!request.getCustomerPhone().trim().equals(order.getCustomer().getPhone())) {
+                throw new BusinessException("Số điện thoại không khớp với thông tin người đặt đơn hàng này!");
+            }
+        }
+
+        // Check duplicate
+        if (reviewRepository.existsBySalesOrderIdAndProductId(order.getId(), productId)) {
+            throw new BusinessException("Bạn đã gửi đánh giá cho sản phẩm này trong đơn hàng #" + order.getOrderCode() + " rồi!");
+        }
+
+        String photos = null;
+        if (request.getPhotoUrls() != null && !request.getPhotoUrls().isEmpty()) {
+            photos = String.join(",", request.getPhotoUrls());
+        }
+
+        String custName = order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách hàng SneakerHub";
+        String custPhone = order.getCustomer() != null ? order.getCustomer().getPhone() : request.getCustomerPhone();
+
+        ProductReview review = ProductReview.builder()
+                .product(product)
+                .salesOrder(order)
+                .customer(order.getCustomer())
+                .customerName(custName)
+                .customerPhone(custPhone)
+                .rating(request.getRating())
+                .fitFeedback(request.getFitFeedback() != null && !request.getFitFeedback().isBlank() ? request.getFitFeedback() : "TRUE_TO_SIZE")
+                .commentText(request.getComment())
+                .photoUrls(photos)
+                .isPurchased(1)
+                .status("APPROVED")
+                .createdBy(custName)
+                .updatedBy(custName)
+                .build();
+
+        ProductReview saved = reviewRepository.save(review);
+
+        return ProductReviewDto.builder()
+                .id(saved.getId())
+                .productId(product.getId())
+                .productName(product.getProductName())
+                .customerName(saved.getCustomerName())
+                .rating(saved.getRating())
+                .fitFeedback(saved.getFitFeedback())
+                .comment(saved.getCommentText())
+                .photoUrls(request.getPhotoUrls() != null ? request.getPhotoUrls() : Collections.emptyList())
+                .isPurchased(true)
+                .createdAt(saved.getCreatedAt())
+                .build();
     }
 }

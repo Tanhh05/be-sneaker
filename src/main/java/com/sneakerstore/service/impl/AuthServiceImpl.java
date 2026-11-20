@@ -9,6 +9,7 @@ import com.sneakerstore.dto.request.ChangePasswordRequest;
 import com.sneakerstore.dto.request.GoogleLoginRequest;
 import com.sneakerstore.dto.request.LoginRequest;
 import com.sneakerstore.dto.request.RegisterRequest;
+import com.sneakerstore.dto.request.UpdateProfileRequest;
 import com.sneakerstore.dto.response.LoginResponse;
 import com.sneakerstore.dto.response.UserDto;
 import com.sneakerstore.entity.Customer;
@@ -417,5 +418,73 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản hiện tại"));
 
         return userMapper.toDto(user);
+    }
+
+    @Override
+    @Transactional
+    public UserDto updateProfile(UpdateProfileRequest request) {
+        String username = SecurityUtils.getCurrentUsername();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản hiện tại"));
+
+        String oldPhone = user.getPhone();
+        String oldEmail = user.getEmail();
+
+        // Kiểm tra trùng lặp email nếu thay đổi
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String newEmail = request.getEmail().trim();
+            if (!newEmail.equalsIgnoreCase(oldEmail) && userRepository.existsByEmail(newEmail)) {
+                throw new BusinessException("Email đã được sử dụng bởi tài khoản khác");
+            }
+            user.setEmail(newEmail);
+        } else {
+            user.setEmail(null);
+        }
+
+        // Kiểm tra trùng lặp phone nếu thay đổi
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            String newPhone = request.getPhone().trim();
+            if (!newPhone.equals(oldPhone) && userRepository.existsByPhone(newPhone)) {
+                throw new BusinessException("Số điện thoại đã được sử dụng bởi tài khoản khác");
+            }
+            user.setPhone(newPhone);
+        } else {
+            user.setPhone(null);
+        }
+
+        user.setFullName(request.getFullName().trim());
+        user.setAddress(request.getAddress() != null && !request.getAddress().isBlank() ? request.getAddress().trim() : null);
+        user.setUpdatedBy(username);
+        User savedUser = userRepository.save(user);
+
+        // Đồng bộ dữ liệu sang bản ghi Customer tương ứng (theo SĐT mới hoặc SĐT cũ)
+        String activePhone = savedUser.getPhone();
+        if (activePhone != null && !activePhone.isBlank()) {
+            Customer customer = customerRepository.findByPhone(activePhone)
+                    .or(() -> (oldPhone != null && !oldPhone.isBlank()) ? customerRepository.findByPhone(oldPhone) : Optional.empty())
+                    .orElseGet(() -> {
+                        long count = customerRepository.count() + 1;
+                        String code = String.format("KH%04d", count);
+                        while (customerRepository.existsByCustomerCodeIgnoreCase(code)) {
+                            count++;
+                            code = String.format("KH%04d", count);
+                        }
+                        return Customer.builder()
+                                .customerCode(code)
+                                .status("ACTIVE")
+                                .build();
+                    });
+
+            customer.setFullName(savedUser.getFullName());
+            customer.setPhone(activePhone);
+            customer.setEmail(savedUser.getEmail());
+            if (savedUser.getAddress() != null && !savedUser.getAddress().isBlank()) {
+                customer.setAddress(savedUser.getAddress());
+            }
+            customer.setUpdatedBy(username);
+            customerRepository.save(customer);
+        }
+
+        return userMapper.toDto(savedUser);
     }
 }

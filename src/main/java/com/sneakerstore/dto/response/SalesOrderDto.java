@@ -33,6 +33,9 @@ public class SalesOrderDto {
     private String note;
     private String qrPaymentUrl;
     private String bankInfo;
+    private String bankAccount;
+    private String bankName;
+    private String accountName;
     private List<SalesOrderDetailDto> details;
     private List<PaymentDto> payments;
     private List<OrderStatusHistoryDto> histories;

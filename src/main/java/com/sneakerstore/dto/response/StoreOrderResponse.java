@@ -25,6 +25,9 @@ public class StoreOrderResponse {
     private String status;
     private String qrPaymentUrl;
     private String bankInfo;
+    private String bankAccount;
+    private String bankName;
+    private String accountName;
     private String note;
     private List<SalesOrderDetailDto> items;
 }

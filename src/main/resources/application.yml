@@ -39,9 +39,9 @@ app:
 
 sepay:
   api-key: ${SEPAY_API_KEY:}
-  bank-account: ${SEPAY_BANK_ACCOUNT:0901000001}
+  bank-account: ${SEPAY_BANK_ACCOUNT:0346771322}
   account-name: ${SEPAY_ACCOUNT_NAME:SNEAKERHUB PRO}
-  bank-name: ${SEPAY_BANK_NAME:MB}
+  bank-name: ${SEPAY_BANK_NAME:MBBank}
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

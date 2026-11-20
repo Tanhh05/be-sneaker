@@ -2,6 +2,7 @@ package com.sneakerstore.controller;
 
 import com.sneakerstore.common.response.ApiResponse;
 import com.sneakerstore.common.response.PageResponse;
+import com.sneakerstore.dto.request.CreateReviewRequest;
 import com.sneakerstore.dto.request.StoreOrderRequest;
 import com.sneakerstore.dto.response.*;
 import com.sneakerstore.service.StoreService;
@@ -44,6 +45,11 @@ public class StoreController {
         return ApiResponse.ok(storeService.getFeaturedProducts());
     }
 
+    @GetMapping("/products/best-seller")
+    public ApiResponse<ProductDto> getBestSellerProduct() {
+        return ApiResponse.ok(storeService.getBestSellerProduct());
+    }
+
     @GetMapping("/products/{id}")
     public ApiResponse<ProductDto> getProductDetail(@PathVariable Long id) {
         return ApiResponse.ok(storeService.getProductDetail(id));
@@ -82,5 +88,17 @@ public class StoreController {
         String reason = payload != null ? payload.get("reason") : null;
         String phone = payload != null ? payload.get("phone") : null;
         return ApiResponse.ok("Hủy đơn hàng thành công", storeService.cancelMyOrder(orderCode, reason, phone));
+    }
+
+    @GetMapping("/products/{id}/reviews")
+    public ApiResponse<ProductReviewSummaryDto> getProductReviews(@PathVariable Long id) {
+        return ApiResponse.ok(storeService.getProductReviews(id));
+    }
+
+    @PostMapping("/products/{id}/reviews")
+    public ApiResponse<ProductReviewDto> submitProductReview(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateReviewRequest request) {
+        return ApiResponse.ok("Gửi đánh giá thành công", storeService.submitProductReview(id, request));
     }
 }

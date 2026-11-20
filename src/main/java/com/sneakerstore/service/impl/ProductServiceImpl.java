@@ -76,10 +76,15 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductDto create(ProductRequest request) {
-        // Bước 1: Validation nghiệp vụ (Kiểm tra trùng mã SP và khóa ngoại Brand/Category)
-        String code = request.getProductCode().trim().toUpperCase();
-        if (productRepository.existsByProductCodeIgnoreCase(code)) {
-            throw new BusinessException("Mã sản phẩm đã tồn tại: " + code);
+        // Bước 1: Validation nghiệp vụ (Tự sinh mã SP ngẫu nhiên nếu trống hoặc kiểm tra trùng)
+        String code = request.getProductCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = generateProductCode();
+        } else {
+            code = code.trim().toUpperCase();
+            if (productRepository.existsByProductCodeIgnoreCase(code)) {
+                throw new BusinessException("Mã sản phẩm đã tồn tại: " + code);
+            }
         }
         Brand brand = brandRepository.findById(request.getBrandId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu với ID: " + request.getBrandId()));
@@ -208,6 +213,15 @@ public class ProductServiceImpl implements ProductService {
         if (!toSave.isEmpty()) {
             productImageRepository.saveAll(toSave);
         }
+    }
+
+    private String generateProductCode() {
+        String code;
+        do {
+            int rand = java.util.concurrent.ThreadLocalRandom.current().nextInt(10000, 100000);
+            code = "SP" + rand;
+        } while (productRepository.existsByProductCodeIgnoreCase(code));
+        return code;
     }
 }
 

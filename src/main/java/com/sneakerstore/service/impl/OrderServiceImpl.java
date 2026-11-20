@@ -344,22 +344,20 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private String generateOrderCode() {
-        long count = salesOrderRepository.count() + 1;
-        String code = String.format("HD%04d", count);
-        while (salesOrderRepository.existsByOrderCodeIgnoreCase(code)) {
-            count++;
-            code = String.format("HD%04d", count);
-        }
+        String code;
+        do {
+            int rand = java.util.concurrent.ThreadLocalRandom.current().nextInt(100000, 1000000);
+            code = "HD" + rand;
+        } while (salesOrderRepository.existsByOrderCodeIgnoreCase(code));
         return code;
     }
 
     private String generatePaymentCode() {
-        long count = paymentRepository.count() + 1;
-        String code = String.format("TT%04d", count);
-        while (paymentRepository.existsByPaymentCodeIgnoreCase(code)) {
-            count++;
-            code = String.format("TT%04d", count);
-        }
+        String code;
+        do {
+            int rand = java.util.concurrent.ThreadLocalRandom.current().nextInt(100000, 1000000);
+            code = "TT" + rand;
+        } while (paymentRepository.existsByPaymentCodeIgnoreCase(code));
         return code;
     }
 }

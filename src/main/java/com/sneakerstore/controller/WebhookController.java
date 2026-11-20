@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/webhooks")
+@RequestMapping({"/api/webhooks", "/api/webhook"})
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Webhooks", description = "Endpoints tiếp nhận Webhook từ cổng thanh toán SePay, VietQR")
@@ -56,7 +56,7 @@ public class WebhookController {
                 .id(System.currentTimeMillis())
                 .gateway(gateway)
                 .transactionDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                .accountNumber("0901000001")
+                .accountNumber("0346771322")
                 .content(orderCode + " chuyen tien thanh toan giay sneaker")
                 .transferType("in")
                 .transferAmount(amount)

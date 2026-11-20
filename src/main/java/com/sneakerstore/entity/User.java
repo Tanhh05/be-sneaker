@@ -40,6 +40,9 @@ public class User extends BaseEntity {
     @Column(name = "PHONE", length = 20)
     private String phone;
 
+    @Column(name = "ADDRESS", length = 255)
+    private String address;
+
     @Column(name = "STATUS", nullable = false, length = 20)
     private String status;
 

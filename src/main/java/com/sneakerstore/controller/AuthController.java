@@ -4,6 +4,7 @@ import com.sneakerstore.dto.request.ChangePasswordRequest;
 import com.sneakerstore.dto.request.GoogleLoginRequest;
 import com.sneakerstore.dto.request.LoginRequest;
 import com.sneakerstore.dto.request.RegisterRequest;
+import com.sneakerstore.dto.request.UpdateProfileRequest;
 import com.sneakerstore.dto.response.LoginResponse;
 import com.sneakerstore.service.AuthService;
 import com.sneakerstore.common.response.ApiResponse;
@@ -48,6 +49,11 @@ public class AuthController {
     @GetMapping("/me")
     public ApiResponse<UserDto> me() {
         return ApiResponse.ok(authService.getCurrentUser());
+    }
+
+    @PutMapping("/profile")
+    public ApiResponse<UserDto> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        return ApiResponse.ok("Cập nhật thông tin tài khoản thành công", authService.updateProfile(request));
     }
 }
 
